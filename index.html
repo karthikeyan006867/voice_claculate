@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Voice Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="calculator">
+            <div class="calculator-header">
+                <h1><i class="fas fa-microphone-alt"></i> Voice Calculator</h1>
+                <div class="mode-toggle">
+                    <button id="themeToggle" class="theme-btn" title="Toggle Theme">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button id="historyToggle" class="history-btn" title="History">
+                        <i class="fas fa-history"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Display Section -->
+            <div class="display-section">
+                <div class="expression" id="expression"></div>
+                <div class="result" id="result">0</div>
+                <div class="voice-feedback" id="voiceFeedback">
+                    <i class="fas fa-volume-up"></i>
+                    <span id="feedbackText">Say a command...</span>
+                </div>
+            </div>
+
+            <!-- Voice Control Section -->
+            <div class="voice-section">
+                <button id="voiceBtn" class="voice-button">
+                    <i class="fas fa-microphone"></i>
+                    <span class="pulse-ring"></span>
+                </button>
+                <p class="voice-status" id="voiceStatus">Click to speak</p>
+            </div>
+
+            <!-- Calculator Modes -->
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="basic">Basic</button>
+                <button class="mode-btn" data-mode="scientific">Scientific</button>
+                <button class="mode-btn" data-mode="programmer">Programmer</button>
+                <button class="mode-btn" data-mode="converter">Converter</button>
+            </div>
+
+            <!-- Basic Calculator -->
+            <div class="calculator-body" id="basicMode">
+                <div class="button-grid">
+                    <button class="btn function" data-action="clear">C</button>
+                    <button class="btn function" data-action="clearEntry">CE</button>
+                    <button class="btn function" data-action="backspace"><i class="fas fa-backspace"></i></button>
+                    <button class="btn operator" data-action="divide">÷</button>
+                    
+                    <button class="btn number" data-value="7">7</button>
+                    <button class="btn number" data-value="8">8</button>
+                    <button class="btn number" data-value="9">9</button>
+                    <button class="btn operator" data-action="multiply">×</button>
+                    
+                    <button class="btn number" data-value="4">4</button>
+                    <button class="btn number" data-value="5">5</button>
+                    <button class="btn number" data-value="6">6</button>
+                    <button class="btn operator" data-action="subtract">−</button>
+                    
+                    <button class="btn number" data-value="1">1</button>
+                    <button class="btn number" data-value="2">2</button>
+                    <button class="btn number" data-value="3">3</button>
+                    <button class="btn operator" data-action="add">+</button>
+                    
+                    <button class="btn function" data-action="negate">±</button>
+                    <button class="btn number" data-value="0">0</button>
+                    <button class="btn number" data-value=".">.</button>
+                    <button class="btn equals" data-action="equals">=</button>
+                </div>
+            </div>
+
+            <!-- Scientific Calculator -->
+            <div class="calculator-body hidden" id="scientificMode">
+                <div class="button-grid scientific-grid">
+                    <button class="btn scientific" data-action="sin">sin</button>
+                    <button class="btn scientific" data-action="cos">cos</button>
+                    <button class="btn scientific" data-action="tan">tan</button>
+                    <button class="btn scientific" data-action="log">log</button>
+                    <button class="btn scientific" data-action="ln">ln</button>
+                    
+                    <button class="btn scientific" data-action="asin">sin⁻¹</button>
+                    <button class="btn scientific" data-action="acos">cos⁻¹</button>
+                    <button class="btn scientific" data-action="atan">tan⁻¹</button>
+                    <button class="btn scientific" data-action="exp">eˣ</button>
+                    <button class="btn scientific" data-action="tenPow">10ˣ</button>
+                    
+                    <button class="btn scientific" data-action="sqrt">√</button>
+                    <button class="btn scientific" data-action="cbrt">∛</button>
+                    <button class="btn scientific" data-action="square">x²</button>
+                    <button class="btn scientific" data-action="cube">x³</button>
+                    <button class="btn scientific" data-action="power">xʸ</button>
+                    
+                    <button class="btn scientific" data-action="factorial">n!</button>
+                    <button class="btn scientific" data-action="pi">π</button>
+                    <button class="btn scientific" data-action="e">e</button>
+                    <button class="btn scientific" data-action="abs">|x|</button>
+                    <button class="btn scientific" data-action="inverse">1/x</button>
+                    
+                    <button class="btn scientific" data-action="parenthesisOpen">(</button>
+                    <button class="btn scientific" data-action="parenthesisClose">)</button>
+                    <button class="btn scientific" data-action="percent">%</button>
+                    <button class="btn scientific" data-action="mod">mod</button>
+                    <button class="btn scientific" data-action="random">rand</button>
+                </div>
+                
+                <div class="button-grid basic-in-scientific">
+                    <button class="btn function" data-action="clear">C</button>
+                    <button class="btn function" data-action="backspace"><i class="fas fa-backspace"></i></button>
+                    <button class="btn operator" data-action="divide">÷</button>
+                    <button class="btn operator" data-action="multiply">×</button>
+                    
+                    <button class="btn number" data-value="7">7</button>
+                    <button class="btn number" data-value="8">8</button>
+                    <button class="btn number" data-value="9">9</button>
+                    <button class="btn operator" data-action="subtract">−</button>
+                    
+                    <button class="btn number" data-value="4">4</button>
+                    <button class="btn number" data-value="5">5</button>
+                    <button class="btn number" data-value="6">6</button>
+                    <button class="btn operator" data-action="add">+</button>
+                    
+                    <button class="btn number" data-value="1">1</button>
+                    <button class="btn number" data-value="2">2</button>
+                    <button class="btn number" data-value="3">3</button>
+                    <button class="btn equals" data-action="equals">=</button>
+                    
+                    <button class="btn number wide" data-value="0">0</button>
+                    <button class="btn number" data-value=".">.</button>
+                    <button class="btn function" data-action="negate">±</button>
+                </div>
+            </div>
+
+            <!-- Programmer Calculator -->
+            <div class="calculator-body hidden" id="programmerMode">
+                <div class="base-display">
+                    <div class="base-row">
+                        <span class="base-label">HEX</span>
+                        <span class="base-value" id="hexValue">0</span>
+                    </div>
+                    <div class="base-row">
+                        <span class="base-label">DEC</span>
+                        <span class="base-value" id="decValue">0</span>
+                    </div>
+                    <div class="base-row">
+                        <span class="base-label">OCT</span>
+                        <span class="base-value" id="octValue">0</span>
+                    </div>
+                    <div class="base-row">
+                        <span class="base-label">BIN</span>
+                        <span class="base-value" id="binValue">0</span>
+                    </div>
+                </div>
+                
+                <div class="base-selector">
+                    <button class="base-btn active" data-base="16">HEX</button>
+                    <button class="base-btn" data-base="10">DEC</button>
+                    <button class="base-btn" data-base="8">OCT</button>
+                    <button class="base-btn" data-base="2">BIN</button>
+                </div>
+                
+                <div class="button-grid programmer-grid">
+                    <button class="btn hex-btn" data-value="A">A</button>
+                    <button class="btn hex-btn" data-value="B">B</button>
+                    <button class="btn hex-btn" data-value="C">C</button>
+                    <button class="btn programmer" data-action="leftShift"><<</button>
+                    <button class="btn programmer" data-action="rightShift">>></button>
+                    
+                    <button class="btn hex-btn" data-value="D">D</button>
+                    <button class="btn hex-btn" data-value="E">E</button>
+                    <button class="btn hex-btn" data-value="F">F</button>
+                    <button class="btn programmer" data-action="and">AND</button>
+                    <button class="btn programmer" data-action="or">OR</button>
+                    
+                    <button class="btn number" data-value="7">7</button>
+                    <button class="btn number" data-value="8">8</button>
+                    <button class="btn number" data-value="9">9</button>
+                    <button class="btn programmer" data-action="xor">XOR</button>
+                    <button class="btn programmer" data-action="not">NOT</button>
+                    
+                    <button class="btn number" data-value="4">4</button>
+                    <button class="btn number" data-value="5">5</button>
+                    <button class="btn number" data-value="6">6</button>
+                    <button class="btn operator" data-action="add">+</button>
+                    <button class="btn operator" data-action="subtract">−</button>
+                    
+                    <button class="btn number" data-value="1">1</button>
+                    <button class="btn number" data-value="2">2</button>
+                    <button class="btn number" data-value="3">3</button>
+                    <button class="btn operator" data-action="multiply">×</button>
+                    <button class="btn operator" data-action="divide">÷</button>
+                    
+                    <button class="btn function" data-action="clear">C</button>
+                    <button class="btn number" data-value="0">0</button>
+                    <button class="btn function" data-action="backspace"><i class="fas fa-backspace"></i></button>
+                    <button class="btn equals wide" data-action="equals">=</button>
+                </div>
+            </div>
+
+            <!-- Unit Converter -->
+            <div class="calculator-body hidden" id="converterMode">
+                <div class="converter-section">
+                    <div class="converter-type">
+                        <select id="converterType">
+                            <option value="length">Length</option>
+                            <option value="weight">Weight</option>
+                            <option value="temperature">Temperature</option>
+                            <option value="area">Area</option>
+                            <option value="volume">Volume</option>
+                            <option value="speed">Speed</option>
+                            <option value="time">Time</option>
+                            <option value="data">Data Storage</option>
+                        </select>
+                    </div>
+                    
+                    <div class="converter-inputs">
+                        <div class="converter-from">
+                            <input type="number" id="fromValue" placeholder="Enter value" value="0">
+                            <select id="fromUnit"></select>
+                        </div>
+                        <div class="converter-arrow">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                        <div class="converter-to">
+                            <input type="number" id="toValue" placeholder="Result" readonly>
+                            <select id="toUnit"></select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Panel -->
+        <div class="history-panel" id="historyPanel">
+            <div class="history-header">
+                <h2><i class="fas fa-history"></i> History</h2>
+                <button id="clearHistory" class="clear-history-btn">
+                    <i class="fas fa-trash"></i> Clear
+                </button>
+            </div>
+            <div class="history-list" id="historyList">
+                <p class="no-history">No calculations yet</p>
+            </div>
+        </div>
+
+        <!-- Voice Commands Help -->
+        <div class="voice-help" id="voiceHelp">
+            <h3><i class="fas fa-question-circle"></i> Voice Commands</h3>
+            <div class="help-content">
+                <div class="help-category">
+                    <h4>Basic Operations</h4>
+                    <ul>
+                        <li>"5 plus 3" or "add 5 and 3"</li>
+                        <li>"10 minus 4" or "subtract 4 from 10"</li>
+                        <li>"6 times 7" or "multiply 6 by 7"</li>
+                        <li>"20 divided by 4" or "divide 20 by 4"</li>
+                    </ul>
+                </div>
+                <div class="help-category">
+                    <h4>Scientific Functions</h4>
+                    <ul>
+                        <li>"square root of 16"</li>
+                        <li>"sine of 30 degrees"</li>
+                        <li>"log of 100"</li>
+                        <li>"5 factorial"</li>
+                        <li>"2 to the power of 8"</li>
+                    </ul>
+                </div>
+                <div class="help-category">
+                    <h4>Controls</h4>
+                    <ul>
+                        <li>"clear" - Clear display</li>
+                        <li>"equals" - Calculate result</li>
+                        <li>"undo" - Undo last action</li>
+                        <li>"history" - Show history</li>
+                    </ul>
+                </div>
+            </div>
+            <button id="closeHelp" class="close-help-btn">Got it!</button>
+        </div>
+    </div>
+
+    <button id="helpBtn" class="floating-help-btn" title="Voice Commands Help">
+        <i class="fas fa-question"></i>
+    </button>
+
+    <script src="script.js"></script>
+</body>
+</html>
