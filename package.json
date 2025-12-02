@@ -8,7 +8,12 @@
     "dev": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["calculator", "voice", "speech-recognition", "scientific-calculator"],
+  "keywords": [
+    "calculator",
+    "voice",
+    "speech-recognition",
+    "scientific-calculator"
+  ],
   "author": "Karthikeyan",
   "license": "MIT",
   "dependencies": {
@@ -18,5 +23,9 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@tauri-apps/api": "^2.9.1",
+    "@tauri-apps/cli": "^2.9.5"
   }
 }
