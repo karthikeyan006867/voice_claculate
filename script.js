@@ -15,6 +15,11 @@ class VoiceCalculator {
         this.recognition = null;
         this.synthesis = window.speechSynthesis;
         
+        // Authentication State
+        this.user = null;
+        this.token = null;
+        this.API_BASE = window.location.origin + '/api';
+        
         // DOM Elements
         this.resultDisplay = document.getElementById('result');
         this.expressionDisplay = document.getElementById('expression');
@@ -36,6 +41,350 @@ class VoiceCalculator {
         this.initConverter();
         this.loadHistory();
         this.loadTheme();
+        this.loadAuthState();
+        this.initModals();
+    }
+    
+    // ==================== AUTHENTICATION ====================
+    
+    loadAuthState() {
+        const savedToken = localStorage.getItem('calculatorToken');
+        const savedUser = localStorage.getItem('calculatorUser');
+        
+        if (savedToken && savedUser) {
+            this.token = savedToken;
+            this.user = JSON.parse(savedUser);
+            this.updateAuthUI();
+            this.fetchUserProfile();
+        }
+    }
+    
+    async fetchUserProfile() {
+        try {
+            const response = await fetch(`${this.API_BASE}/auth/profile`, {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.user = { ...this.user, ...data.user };
+                localStorage.setItem('calculatorUser', JSON.stringify(this.user));
+                this.updateAuthUI();
+            } else if (response.status === 401 || response.status === 403) {
+                this.logout();
+            }
+        } catch (error) {
+            console.error('Failed to fetch profile:', error);
+        }
+    }
+    
+    async login(email, password) {
+        try {
+            const response = await fetch(`${this.API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.token = data.token;
+                this.user = data.user;
+                localStorage.setItem('calculatorToken', this.token);
+                localStorage.setItem('calculatorUser', JSON.stringify(this.user));
+                this.updateAuthUI();
+                this.closeModal('authModal');
+                this.showToast('Login successful!', 'success');
+                this.syncHistory();
+            } else {
+                this.showToast(data.error || 'Login failed', 'error');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            this.showToast('Connection error. Please try again.', 'error');
+        }
+    }
+    
+    async register(username, email, password, displayName) {
+        try {
+            const response = await fetch(`${this.API_BASE}/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, email, password, displayName })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.token = data.token;
+                this.user = data.user;
+                localStorage.setItem('calculatorToken', this.token);
+                localStorage.setItem('calculatorUser', JSON.stringify(this.user));
+                this.updateAuthUI();
+                this.closeModal('authModal');
+                this.showToast('Registration successful!', 'success');
+            } else {
+                this.showToast(data.error || 'Registration failed', 'error');
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            this.showToast('Connection error. Please try again.', 'error');
+        }
+    }
+    
+    logout() {
+        this.token = null;
+        this.user = null;
+        localStorage.removeItem('calculatorToken');
+        localStorage.removeItem('calculatorUser');
+        this.updateAuthUI();
+        this.closeModal('profileModal');
+        this.showToast('Logged out successfully', 'info');
+    }
+    
+    updateAuthUI() {
+        const userBtn = document.getElementById('userBtn');
+        
+        if (this.user) {
+            userBtn.classList.add('logged-in');
+            userBtn.title = this.user.displayName || this.user.username;
+            
+            // Update profile modal
+            document.getElementById('profileName').textContent = this.user.displayName || this.user.username;
+            document.getElementById('profileEmail').textContent = this.user.email;
+            
+            if (this.user.total_calculations !== undefined) {
+                document.getElementById('statCalculations').textContent = this.user.total_calculations || 0;
+                document.getElementById('statConversions').textContent = this.user.total_conversions || 0;
+                document.getElementById('statVoiceCommands').textContent = this.user.total_voice_commands || 0;
+                document.getElementById('statStreak').textContent = this.user.streak_days || 0;
+            }
+        } else {
+            userBtn.classList.remove('logged-in');
+            userBtn.title = 'Account';
+        }
+    }
+    
+    // ==================== API METHODS ====================
+    
+    async saveCalculationToServer(expression, result, mode) {
+        if (!this.token) return;
+        
+        try {
+            await fetch(`${this.API_BASE}/calculations`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                },
+                body: JSON.stringify({ expression, result: String(result), mode })
+            });
+        } catch (error) {
+            console.error('Failed to save calculation:', error);
+        }
+    }
+    
+    async syncHistory() {
+        if (!this.token) return;
+        
+        try {
+            const response = await fetch(`${this.API_BASE}/calculations?limit=50`, {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                // Merge server history with local
+                this.history = data.calculations.map(c => ({
+                    expression: c.expression,
+                    result: c.result,
+                    timestamp: new Date(c.created_at).toLocaleTimeString()
+                }));
+                this.renderHistory();
+            }
+        } catch (error) {
+            console.error('Failed to sync history:', error);
+        }
+    }
+    
+    async saveToFavorites(name, category, description) {
+        if (!this.token) {
+            this.showToast('Please login to save calculations', 'info');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${this.API_BASE}/saved`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                },
+                body: JSON.stringify({
+                    name,
+                    expression: this.expression || this.currentValue,
+                    result: this.currentValue,
+                    description,
+                    category
+                })
+            });
+            
+            if (response.ok) {
+                this.showToast('Calculation saved!', 'success');
+                this.closeModal('saveModal');
+            } else {
+                this.showToast('Failed to save', 'error');
+            }
+        } catch (error) {
+            console.error('Save error:', error);
+            this.showToast('Connection error', 'error');
+        }
+    }
+    
+    async loadSavedCalculations() {
+        if (!this.token) return;
+        
+        try {
+            const response = await fetch(`${this.API_BASE}/saved`, {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.renderSavedList(data.saved);
+            }
+        } catch (error) {
+            console.error('Failed to load saved:', error);
+        }
+    }
+    
+    async deleteSaved(id) {
+        try {
+            const response = await fetch(`${this.API_BASE}/saved/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+            
+            if (response.ok) {
+                this.showToast('Deleted successfully', 'success');
+                this.loadSavedCalculations();
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+        }
+    }
+    
+    async saveFormula(formulaData) {
+        if (!this.token) {
+            this.showToast('Please login to save formulas', 'info');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${this.API_BASE}/formulas`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                },
+                body: JSON.stringify(formulaData)
+            });
+            
+            if (response.ok) {
+                this.showToast('Formula saved!', 'success');
+                this.closeModal('formulaModal');
+            } else {
+                this.showToast('Failed to save formula', 'error');
+            }
+        } catch (error) {
+            console.error('Save formula error:', error);
+            this.showToast('Connection error', 'error');
+        }
+    }
+    
+    async loadFormulas(isPublic = false) {
+        const endpoint = isPublic ? '/formulas/public' : '/formulas';
+        const headers = isPublic ? {} : { 'Authorization': `Bearer ${this.token}` };
+        
+        try {
+            const response = await fetch(`${this.API_BASE}${endpoint}`, { headers });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (isPublic) {
+                    this.renderFormulasList(data.formulas, 'publicFormulasList');
+                } else {
+                    this.renderFormulasList(data.formulas, 'myFormulasList');
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load formulas:', error);
+        }
+    }
+    
+    async deleteFormula(id) {
+        try {
+            const response = await fetch(`${this.API_BASE}/formulas/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+            
+            if (response.ok) {
+                this.showToast('Formula deleted', 'success');
+                this.loadFormulas(false);
+            }
+        } catch (error) {
+            console.error('Delete formula error:', error);
+        }
+    }
+    
+    async shareCalculation() {
+        const expression = this.expression || this.currentValue;
+        const result = this.currentValue;
+        const expiresIn = document.getElementById('shareExpiry').value;
+        
+        try {
+            const response = await fetch(`${this.API_BASE}/share`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(this.token ? { 'Authorization': `Bearer ${this.token}` } : {})
+                },
+                body: JSON.stringify({
+                    expression,
+                    result,
+                    mode: this.currentMode,
+                    expiresIn: expiresIn ? parseInt(expiresIn) : null
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const shareUrl = `${window.location.origin}${data.shareUrl}`;
+                document.getElementById('shareLink').value = shareUrl;
+                document.getElementById('shareLinkContainer').classList.remove('hidden');
+                this.showToast('Share link generated!', 'success');
+            }
+        } catch (error) {
+            console.error('Share error:', error);
+            this.showToast('Failed to generate share link', 'error');
+        }
+    }
+    
+    async logVoiceCommand(commandText, interpretedAs, success) {
+        try {
+            await fetch(`${this.API_BASE}/voice-commands`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(this.token ? { 'Authorization': `Bearer ${this.token}` } : {})
+                },
+                body: JSON.stringify({ commandText, interpretedAs, success })
+            });
+        } catch (error) {
+            console.error('Failed to log voice command:', error);
+        }
     }
     
     // Speech Recognition Setup
@@ -70,6 +419,7 @@ class VoiceCalculator {
             this.recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
                 this.stopListening();
+                this.logVoiceCommand(this.feedbackText.textContent, null, false);
                 this.showToast('Voice recognition error. Please try again.', 'error');
             };
             
@@ -103,11 +453,15 @@ class VoiceCalculator {
     // Voice Command Processing
     processVoiceCommand(command) {
         console.log('Processing command:', command);
+        let interpreted = null;
+        let success = true;
         
         // Clear commands
         if (command.includes('clear') || command.includes('reset')) {
             this.clear();
             this.speak('Cleared');
+            interpreted = 'clear';
+            this.logVoiceCommand(command, interpreted, success);
             return;
         }
         
@@ -115,6 +469,8 @@ class VoiceCalculator {
         if (command.includes('history') || command.includes('show history')) {
             this.toggleHistory();
             this.speak('Showing history');
+            interpreted = 'show history';
+            this.logVoiceCommand(command, interpreted, success);
             return;
         }
         
@@ -122,12 +478,16 @@ class VoiceCalculator {
         if (command.includes('undo') || command.includes('back')) {
             this.backspace();
             this.speak('Undone');
+            interpreted = 'undo';
+            this.logVoiceCommand(command, interpreted, success);
             return;
         }
         
         // Equals command
         if (command.includes('equals') || command.includes('calculate') || command.includes('result')) {
             this.calculate();
+            interpreted = 'calculate';
+            this.logVoiceCommand(command, interpreted, success);
             return;
         }
         
@@ -135,21 +495,29 @@ class VoiceCalculator {
         if (command.includes('basic mode')) {
             this.switchMode('basic');
             this.speak('Switched to basic mode');
+            interpreted = 'switch to basic mode';
+            this.logVoiceCommand(command, interpreted, success);
             return;
         }
         if (command.includes('scientific mode')) {
             this.switchMode('scientific');
             this.speak('Switched to scientific mode');
+            interpreted = 'switch to scientific mode';
+            this.logVoiceCommand(command, interpreted, success);
             return;
         }
         if (command.includes('programmer mode')) {
             this.switchMode('programmer');
             this.speak('Switched to programmer mode');
+            interpreted = 'switch to programmer mode';
+            this.logVoiceCommand(command, interpreted, success);
             return;
         }
         if (command.includes('converter') || command.includes('convert')) {
             this.switchMode('converter');
             this.speak('Switched to converter mode');
+            interpreted = 'switch to converter mode';
+            this.logVoiceCommand(command, interpreted, success);
             return;
         }
         
@@ -157,6 +525,11 @@ class VoiceCalculator {
         const result = this.parseVoiceExpression(command);
         if (result !== null) {
             this.speak(`The answer is ${result}`);
+            interpreted = 'mathematical calculation';
+            this.logVoiceCommand(command, interpreted, success);
+        } else {
+            success = false;
+            this.logVoiceCommand(command, null, success);
         }
     }
     
@@ -345,6 +718,24 @@ class VoiceCalculator {
         document.getElementById('helpBtn').addEventListener('click', () => this.toggleHelp());
         document.getElementById('closeHelp').addEventListener('click', () => this.toggleHelp());
         
+        // User/Auth button
+        document.getElementById('userBtn').addEventListener('click', () => {
+            if (this.user) {
+                this.openModal('profileModal');
+                this.fetchUserProfile();
+            } else {
+                this.openModal('authModal');
+            }
+        });
+        
+        // Share button
+        document.getElementById('shareBtn').addEventListener('click', () => {
+            document.getElementById('shareExpression').textContent = this.expression || this.currentValue;
+            document.getElementById('shareResult').textContent = `= ${this.currentValue}`;
+            document.getElementById('shareLinkContainer').classList.add('hidden');
+            this.openModal('shareModal');
+        });
+        
         // Keyboard support
         document.addEventListener('keydown', (e) => this.handleKeyboard(e));
         
@@ -353,6 +744,264 @@ class VoiceCalculator {
         document.getElementById('fromValue').addEventListener('input', () => this.convert());
         document.getElementById('fromUnit').addEventListener('change', () => this.convert());
         document.getElementById('toUnit').addEventListener('change', () => this.convert());
+    }
+    
+    // Initialize Modals
+    initModals() {
+        // Close modal buttons
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const modal = btn.closest('.modal');
+                if (modal) {
+                    modal.classList.remove('show');
+                }
+            });
+        });
+        
+        // Close modal on outside click
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            });
+        });
+        
+        // Auth tabs
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                const isLogin = tab.dataset.tab === 'login';
+                document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
+                document.getElementById('registerForm').classList.toggle('hidden', isLogin);
+                document.getElementById('authModalTitle').innerHTML = isLogin 
+                    ? '<i class="fas fa-user-circle"></i> Login' 
+                    : '<i class="fas fa-user-plus"></i> Register';
+            });
+        });
+        
+        // Login form
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            this.login(email, password);
+        });
+        
+        // Register form
+        document.getElementById('registerForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = document.getElementById('registerUsername').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const displayName = document.getElementById('registerDisplayName').value;
+            this.register(username, email, password, displayName);
+        });
+        
+        // Logout button
+        document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+        
+        // View saved calculations
+        document.getElementById('viewSavedBtn').addEventListener('click', () => {
+            this.closeModal('profileModal');
+            this.loadSavedCalculations();
+            this.openModal('savedListModal');
+        });
+        
+        // View formulas
+        document.getElementById('viewFormulasBtn').addEventListener('click', () => {
+            this.closeModal('profileModal');
+            this.loadFormulas(false);
+            this.openModal('formulasListModal');
+        });
+        
+        // Save form
+        document.getElementById('saveForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('saveName').value;
+            const category = document.getElementById('saveCategory').value;
+            const description = document.getElementById('saveDescription').value;
+            this.saveToFavorites(name, category, description);
+        });
+        
+        // Share link generation
+        document.getElementById('generateShareLink').addEventListener('click', () => this.shareCalculation());
+        
+        // Copy share link
+        document.getElementById('copyShareLink').addEventListener('click', () => {
+            const linkInput = document.getElementById('shareLink');
+            linkInput.select();
+            document.execCommand('copy');
+            this.showToast('Link copied to clipboard!', 'success');
+        });
+        
+        // Formula tabs
+        document.querySelectorAll('.formula-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.formula-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                const isMyFormulas = tab.dataset.tab === 'my-formulas';
+                document.getElementById('myFormulasList').classList.toggle('hidden', !isMyFormulas);
+                document.getElementById('publicFormulasList').classList.toggle('hidden', isMyFormulas);
+                
+                if (!isMyFormulas) {
+                    this.loadFormulas(true);
+                }
+            });
+        });
+        
+        // Create formula button
+        document.getElementById('createFormulaBtn').addEventListener('click', () => {
+            this.closeModal('formulasListModal');
+            this.openModal('formulaModal');
+        });
+        
+        // Add variable button
+        document.getElementById('addVariableBtn').addEventListener('click', () => {
+            const container = document.getElementById('formulaVariables');
+            const newVar = document.createElement('div');
+            newVar.className = 'variable-input';
+            newVar.innerHTML = `
+                <input type="text" placeholder="Variable name (e.g., r)" class="var-name">
+                <input type="text" placeholder="Description" class="var-desc">
+                <button type="button" class="remove-var-btn"><i class="fas fa-times"></i></button>
+            `;
+            container.appendChild(newVar);
+            
+            newVar.querySelector('.remove-var-btn').addEventListener('click', () => newVar.remove());
+        });
+        
+        // Remove variable buttons
+        document.querySelectorAll('.remove-var-btn').forEach(btn => {
+            btn.addEventListener('click', () => btn.closest('.variable-input').remove());
+        });
+        
+        // Formula form
+        document.getElementById('formulaForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const variables = [];
+            document.querySelectorAll('.variable-input').forEach(varInput => {
+                const name = varInput.querySelector('.var-name').value;
+                const desc = varInput.querySelector('.var-desc').value;
+                if (name) {
+                    variables.push({ name, description: desc });
+                }
+            });
+            
+            const formulaData = {
+                name: document.getElementById('formulaName').value,
+                formula: document.getElementById('formulaExpression').value,
+                variables,
+                description: document.getElementById('formulaDescription').value,
+                category: document.getElementById('formulaCategory').value,
+                isPublic: document.getElementById('formulaPublic').checked
+            };
+            
+            this.saveFormula(formulaData);
+        });
+    }
+    
+    openModal(modalId) {
+        document.getElementById(modalId).classList.add('show');
+    }
+    
+    closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('show');
+    }
+    
+    renderSavedList(savedItems) {
+        const container = document.getElementById('savedList');
+        
+        if (!savedItems || savedItems.length === 0) {
+            container.innerHTML = '<p class="no-items">No saved calculations yet</p>';
+            return;
+        }
+        
+        container.innerHTML = savedItems.map(item => `
+            <div class="saved-item" data-id="${item.id}">
+                <div class="saved-item-header">
+                    <span class="saved-item-name">${item.name}</span>
+                    ${item.category ? `<span class="formula-item-category">${item.category}</span>` : ''}
+                </div>
+                <div class="formula-item-expression">${item.expression} = ${item.result}</div>
+                ${item.description ? `<div class="saved-item-description">${item.description}</div>` : ''}
+                <div class="saved-item-actions">
+                    <button class="saved-action-btn use-btn" data-result="${item.result}">
+                        <i class="fas fa-calculator"></i> Use
+                    </button>
+                    <button class="saved-action-btn delete" data-id="${item.id}">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+        // Add event listeners
+        container.querySelectorAll('.use-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.currentValue = btn.dataset.result;
+                this.updateDisplay();
+                this.closeModal('savedListModal');
+            });
+        });
+        
+        container.querySelectorAll('.saved-action-btn.delete').forEach(btn => {
+            btn.addEventListener('click', () => this.deleteSaved(btn.dataset.id));
+        });
+    }
+    
+    renderFormulasList(formulas, containerId) {
+        const container = document.getElementById(containerId);
+        
+        if (!formulas || formulas.length === 0) {
+            container.innerHTML = '<p class="no-items">No formulas available</p>';
+            return;
+        }
+        
+        container.innerHTML = formulas.map(formula => `
+            <div class="formula-item" data-id="${formula.id}">
+                <div class="formula-item-header">
+                    <span class="formula-item-name">${formula.name}</span>
+                    <span class="formula-item-category">${formula.category || 'other'}</span>
+                </div>
+                <div class="formula-item-expression">${formula.formula}</div>
+                ${formula.description ? `<div class="formula-item-description">${formula.description}</div>` : ''}
+                <div class="formula-item-actions">
+                    <button class="formula-action-btn use-formula" data-formula="${formula.formula}">
+                        <i class="fas fa-play"></i> Use
+                    </button>
+                    ${containerId === 'myFormulasList' ? `
+                        <button class="formula-action-btn delete" data-id="${formula.id}">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `).join('');
+        
+        // Add event listeners
+        container.querySelectorAll('.use-formula').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.useFormula(btn.dataset.formula);
+                this.closeModal('formulasListModal');
+            });
+        });
+        
+        container.querySelectorAll('.formula-action-btn.delete').forEach(btn => {
+            btn.addEventListener('click', () => this.deleteFormula(btn.dataset.id));
+        });
+    }
+    
+    useFormula(formula) {
+        // For now, just show the formula - in a full implementation, 
+        // you'd prompt for variable values
+        this.expression = formula;
+        this.expressionDisplay.textContent = formula;
+        this.showToast('Formula loaded. Enter values for variables.', 'info');
     }
     
     // Calculator Operations
@@ -885,6 +1534,9 @@ class VoiceCalculator {
         
         this.saveHistory();
         this.renderHistory();
+        
+        // Sync with server if logged in
+        this.saveCalculationToServer(expression, result, this.currentMode);
     }
     
     renderHistory() {

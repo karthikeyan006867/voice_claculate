@@ -1,0 +1,22 @@
+{
+  "name": "voice_claculate",
+  "version": "1.0.0",
+  "description": "A modern, feature-rich calculator with voice control, multiple calculation modes, and a beautiful responsive UI.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["calculator", "voice", "speech-recognition", "scientific-calculator"],
+  "author": "Karthikeyan",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.3"
+  }
+}

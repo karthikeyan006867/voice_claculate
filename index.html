@@ -14,11 +14,17 @@
             <div class="calculator-header">
                 <h1><i class="fas fa-microphone-alt"></i> Voice Calculator</h1>
                 <div class="mode-toggle">
+                    <button id="userBtn" class="user-btn" title="Account">
+                        <i class="fas fa-user"></i>
+                    </button>
                     <button id="themeToggle" class="theme-btn" title="Toggle Theme">
                         <i class="fas fa-moon"></i>
                     </button>
                     <button id="historyToggle" class="history-btn" title="History">
                         <i class="fas fa-history"></i>
+                    </button>
+                    <button id="shareBtn" class="share-btn" title="Share">
+                        <i class="fas fa-share-alt"></i>
                     </button>
                 </div>
             </div>
@@ -293,6 +299,291 @@
     <button id="helpBtn" class="floating-help-btn" title="Voice Commands Help">
         <i class="fas fa-question"></i>
     </button>
+
+    <!-- Auth Modal -->
+    <div class="modal" id="authModal">
+        <div class="modal-content auth-modal">
+            <div class="modal-header">
+                <h2 id="authModalTitle"><i class="fas fa-user-circle"></i> Login</h2>
+                <button class="close-modal" id="closeAuthModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-tab="login">Login</button>
+                    <button class="auth-tab" data-tab="register">Register</button>
+                </div>
+                
+                <!-- Login Form -->
+                <form id="loginForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="loginEmail"><i class="fas fa-envelope"></i> Email</label>
+                        <input type="email" id="loginEmail" placeholder="Enter your email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword"><i class="fas fa-lock"></i> Password</label>
+                        <input type="password" id="loginPassword" placeholder="Enter your password" required>
+                    </div>
+                    <button type="submit" class="auth-submit-btn">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </button>
+                </form>
+                
+                <!-- Register Form -->
+                <form id="registerForm" class="auth-form hidden">
+                    <div class="form-group">
+                        <label for="registerUsername"><i class="fas fa-user"></i> Username</label>
+                        <input type="text" id="registerUsername" placeholder="Choose a username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail"><i class="fas fa-envelope"></i> Email</label>
+                        <input type="email" id="registerEmail" placeholder="Enter your email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword"><i class="fas fa-lock"></i> Password</label>
+                        <input type="password" id="registerPassword" placeholder="Create a password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerDisplayName"><i class="fas fa-id-card"></i> Display Name</label>
+                        <input type="text" id="registerDisplayName" placeholder="Your display name (optional)">
+                    </div>
+                    <button type="submit" class="auth-submit-btn">
+                        <i class="fas fa-user-plus"></i> Register
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Profile Modal -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content profile-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-circle"></i> Profile</h2>
+                <button class="close-modal" id="closeProfileModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profileAvatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="profile-info">
+                        <h3 id="profileName">User</h3>
+                        <p id="profileEmail">user@email.com</p>
+                    </div>
+                </div>
+                
+                <div class="profile-stats">
+                    <div class="stat-card">
+                        <i class="fas fa-calculator"></i>
+                        <span class="stat-value" id="statCalculations">0</span>
+                        <span class="stat-label">Calculations</span>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-exchange-alt"></i>
+                        <span class="stat-value" id="statConversions">0</span>
+                        <span class="stat-label">Conversions</span>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-microphone"></i>
+                        <span class="stat-value" id="statVoiceCommands">0</span>
+                        <span class="stat-label">Voice Commands</span>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-fire"></i>
+                        <span class="stat-value" id="statStreak">0</span>
+                        <span class="stat-label">Day Streak</span>
+                    </div>
+                </div>
+                
+                <div class="profile-actions">
+                    <button id="viewSavedBtn" class="profile-action-btn">
+                        <i class="fas fa-star"></i> Saved Calculations
+                    </button>
+                    <button id="viewFormulasBtn" class="profile-action-btn">
+                        <i class="fas fa-function"></i> My Formulas
+                    </button>
+                    <button id="logoutBtn" class="profile-action-btn danger">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Calculation Modal -->
+    <div class="modal" id="saveModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-star"></i> Save Calculation</h2>
+                <button class="close-modal" id="closeSaveModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="saveForm">
+                    <div class="form-group">
+                        <label for="saveName">Name</label>
+                        <input type="text" id="saveName" placeholder="Name this calculation" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="saveCategory">Category</label>
+                        <select id="saveCategory">
+                            <option value="">Select category</option>
+                            <option value="math">Math</option>
+                            <option value="finance">Finance</option>
+                            <option value="science">Science</option>
+                            <option value="engineering">Engineering</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="saveDescription">Description (optional)</label>
+                        <textarea id="saveDescription" placeholder="Add a description..."></textarea>
+                    </div>
+                    <div class="save-preview">
+                        <span id="saveExpression"></span>
+                        <span id="saveResult"></span>
+                    </div>
+                    <button type="submit" class="auth-submit-btn">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div class="modal" id="shareModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-share-alt"></i> Share Calculation</h2>
+                <button class="close-modal" id="closeShareModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="share-preview">
+                    <div class="share-expression" id="shareExpression"></div>
+                    <div class="share-result" id="shareResult"></div>
+                </div>
+                <div class="share-options">
+                    <div class="form-group">
+                        <label>Expire after</label>
+                        <select id="shareExpiry">
+                            <option value="">Never</option>
+                            <option value="3600">1 hour</option>
+                            <option value="86400">24 hours</option>
+                            <option value="604800">7 days</option>
+                            <option value="2592000">30 days</option>
+                        </select>
+                    </div>
+                    <button id="generateShareLink" class="auth-submit-btn">
+                        <i class="fas fa-link"></i> Generate Link
+                    </button>
+                </div>
+                <div class="share-link-container hidden" id="shareLinkContainer">
+                    <input type="text" id="shareLink" readonly>
+                    <button id="copyShareLink" class="copy-btn">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formula Modal -->
+    <div class="modal" id="formulaModal">
+        <div class="modal-content formula-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-function"></i> Custom Formula</h2>
+                <button class="close-modal" id="closeFormulaModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="formulaForm">
+                    <div class="form-group">
+                        <label for="formulaName">Formula Name</label>
+                        <input type="text" id="formulaName" placeholder="e.g., Area of Circle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="formulaExpression">Formula Expression</label>
+                        <input type="text" id="formulaExpression" placeholder="e.g., pi * r^2" required>
+                        <small>Use variables like x, y, r. Supports: +, -, *, /, ^, sqrt, sin, cos, tan, log, pi, e</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Variables</label>
+                        <div id="formulaVariables" class="formula-variables">
+                            <div class="variable-input">
+                                <input type="text" placeholder="Variable name (e.g., r)" class="var-name">
+                                <input type="text" placeholder="Description" class="var-desc">
+                                <button type="button" class="remove-var-btn"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <button type="button" id="addVariableBtn" class="add-var-btn">
+                            <i class="fas fa-plus"></i> Add Variable
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <label for="formulaDescription">Description</label>
+                        <textarea id="formulaDescription" placeholder="Describe your formula..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="formulaCategory">Category</label>
+                        <select id="formulaCategory">
+                            <option value="math">Mathematics</option>
+                            <option value="physics">Physics</option>
+                            <option value="chemistry">Chemistry</option>
+                            <option value="finance">Finance</option>
+                            <option value="engineering">Engineering</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="formulaPublic">
+                        <label for="formulaPublic">Make this formula public</label>
+                    </div>
+                    <button type="submit" class="auth-submit-btn">
+                        <i class="fas fa-save"></i> Save Formula
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulas List Modal -->
+    <div class="modal" id="formulasListModal">
+        <div class="modal-content formulas-list-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-function"></i> My Formulas</h2>
+                <button class="close-modal" id="closeFormulasListModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="formulas-tabs">
+                    <button class="formula-tab active" data-tab="my-formulas">My Formulas</button>
+                    <button class="formula-tab" data-tab="public-formulas">Public Formulas</button>
+                </div>
+                <div id="myFormulasList" class="formulas-list">
+                    <p class="no-items">No formulas saved yet</p>
+                </div>
+                <div id="publicFormulasList" class="formulas-list hidden">
+                    <p class="no-items">No public formulas available</p>
+                </div>
+                <button id="createFormulaBtn" class="create-formula-btn">
+                    <i class="fas fa-plus"></i> Create New Formula
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved Calculations Modal -->
+    <div class="modal" id="savedListModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-star"></i> Saved Calculations</h2>
+                <button class="close-modal" id="closeSavedListModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="savedList" class="saved-list">
+                    <p class="no-items">No saved calculations yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>

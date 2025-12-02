@@ -1,9 +1,10 @@
 # 🎤 Advanced Voice-Controlled Calculator
 
-A modern, feature-rich calculator with voice control, multiple calculation modes, and a beautiful responsive UI.
+A modern, feature-rich calculator with voice control, multiple calculation modes, cloud sync, and a beautiful responsive UI.
 
 ![Voice Calculator](https://img.shields.io/badge/Voice-Enabled-green)
 ![Modes](https://img.shields.io/badge/Modes-4-blue)
+![Database](https://img.shields.io/badge/Database-PostgreSQL-blue)
 ![Responsive](https://img.shields.io/badge/Responsive-Yes-purple)
 
 ## ✨ Features
@@ -12,6 +13,7 @@ A modern, feature-rich calculator with voice control, multiple calculation modes
 - **Natural Language Processing**: Speak calculations in plain English
 - **Speech Recognition**: Real-time voice input with visual feedback
 - **Text-to-Speech**: Hear your results spoken back to you
+- **Voice Command Analytics**: Track your voice usage patterns
 - **Supports complex expressions**: "What is 25 plus 17", "Square root of 144"
 
 ### 🧮 Calculator Modes
@@ -45,6 +47,16 @@ A modern, feature-rich calculator with voice control, multiple calculation modes
 - **Speed**: m/s, km/h, mph, knots
 - **Time**: seconds to years
 - **Data Storage**: bytes to terabytes
+
+### 🗄️ Cloud Features (with PostgreSQL/Neon)
+- **User Authentication**: Register and login securely
+- **Cloud Sync**: Sync calculation history across devices
+- **Saved Calculations**: Save favorite calculations with names and categories
+- **Custom Formulas**: Create and save reusable formulas
+- **Public Formula Library**: Share and discover formulas from other users
+- **Share Calculations**: Generate shareable links for calculations
+- **User Statistics**: Track total calculations, conversions, voice commands
+- **Streak Tracking**: Keep track of your daily usage streaks
 
 ### 🎨 Additional Features
 - **Dark/Light Theme**: Toggle between themes with persistent preference
@@ -89,8 +101,10 @@ A modern, feature-rich calculator with voice control, multiple calculation modes
 ## 🚀 Getting Started
 
 ### Prerequisites
+- Node.js 18+ 
 - Modern web browser with Web Speech API support (Chrome, Edge, Safari)
 - Microphone access for voice features
+- PostgreSQL database (Neon recommended)
 
 ### Installation
 
@@ -100,18 +114,27 @@ git clone https://github.com/karthikeyan006867/voice_claculate.git
 cd voice_claculate
 ```
 
-2. Open `index.html` in your web browser
-
-Or simply serve it with any static file server:
+2. Install dependencies:
 ```bash
-# Using Python
-python -m http.server 8000
-
-# Using Node.js
-npx serve
+npm install
 ```
 
-3. Allow microphone access when prompted
+3. Set up environment variables:
+Create a `.env` file with your database credentials:
+```env
+DATABASE_URL=postgresql://user:password@host/database?sslmode=require
+JWT_SECRET=your-secret-key
+PORT=3000
+```
+
+4. Start the server:
+```bash
+npm start
+```
+
+5. Open http://localhost:3000 in your browser
+
+6. Allow microphone access when prompted
 
 ## 🎯 Usage
 
@@ -140,9 +163,42 @@ Or use the **on-screen buttons** and **keyboard** for manual input.
 - **HTML5** - Structure
 - **CSS3** - Styling with CSS Variables, Flexbox, Grid
 - **JavaScript (ES6+)** - Calculator logic and voice processing
+- **Node.js & Express** - Backend server
+- **PostgreSQL (Neon)** - Cloud database
+- **JWT** - Secure authentication
 - **Web Speech API** - Voice recognition and synthesis
 - **Font Awesome** - Icons
 - **Google Fonts** - Orbitron & Roboto typography
+
+## 🗄️ Database Schema
+
+The application uses PostgreSQL with the following tables:
+- `users` - User accounts and preferences
+- `calculation_history` - Calculation logs
+- `saved_calculations` - Favorite/saved calculations
+- `custom_formulas` - User-defined formulas
+- `conversion_history` - Unit conversion logs
+- `user_statistics` - Usage statistics and streaks
+- `voice_commands` - Voice command analytics
+- `shared_calculations` - Shareable calculation links
+
+## 📡 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Register new user |
+| POST | `/api/auth/login` | Login user |
+| GET | `/api/auth/profile` | Get user profile |
+| POST | `/api/calculations` | Save calculation |
+| GET | `/api/calculations` | Get calculation history |
+| POST | `/api/saved` | Save to favorites |
+| GET | `/api/saved` | Get saved calculations |
+| POST | `/api/formulas` | Create custom formula |
+| GET | `/api/formulas` | Get user's formulas |
+| GET | `/api/formulas/public` | Get public formulas |
+| POST | `/api/share` | Share a calculation |
+| GET | `/api/share/:id` | Get shared calculation |
+| GET | `/api/statistics` | Get user statistics |
 
 ## 📱 Browser Support
 
@@ -175,4 +231,4 @@ Contributions, issues, and feature requests are welcome!
 
 ---
 
-⭐ Star this repo if you find it helpful!
+⭐ Star this repo if you find it helpful!⭐ Star this repo if you find it helpful!
