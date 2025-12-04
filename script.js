@@ -453,8 +453,21 @@ class VoiceCalculator {
     // Voice Command Processing
     processVoiceCommand(command) {
         console.log('Processing command:', command);
+        
+        // Show what was heard to the user
+        this.feedbackText.textContent = `Heard: "${command}"`;
+        
         let interpreted = null;
         let success = true;
+        
+        // Help command
+        if (command.includes('help') || command.includes('what can')) {
+            this.showVoiceHelp();
+            this.speak('Here are some things you can say: five plus three, square root of 16, clear, or switch to scientific mode');
+            interpreted = 'help';
+            this.logVoiceCommand(command, interpreted, success);
+            return;
+        }
         
         // Clear commands
         if (command.includes('clear') || command.includes('reset')) {
@@ -524,123 +537,312 @@ class VoiceCalculator {
         // Parse mathematical expressions
         const result = this.parseVoiceExpression(command);
         if (result !== null) {
+            // Show detailed feedback
+            this.feedbackText.textContent = `${this.expression || command} = ${result}`;
             this.speak(`The answer is ${result}`);
             interpreted = 'mathematical calculation';
             this.logVoiceCommand(command, interpreted, success);
         } else {
-            success = false;
-            this.logVoiceCommand(command, null, success);
+            // Check if a number was entered
+            if (this.result !== '0') {
+                this.feedbackText.textContent = `Entered: ${this.result}`;
+                interpreted = 'number input';
+                this.logVoiceCommand(command, interpreted, true);
+            } else {
+                this.feedbackText.textContent = `Could not understand: "${command}"`;
+                success = false;
+                this.logVoiceCommand(command, null, success);
+            }
         }
     }
     
     parseVoiceExpression(command) {
-        // Number words to digits mapping
+        console.log('Original command:', command);
+        
+        // Step 1: Normalize and clean the input
+        let processedCommand = command.toLowerCase().trim();
+        
+        // Step 2: Fix common speech recognition errors
+        // Sometimes "+" is heard as "plus" but sometimes literally as "+"
+        const speechFixes = {
+            // Operator fixes - handle when speech recognition outputs symbols
+            '\\+': ' plus ',
+            '\\-': ' minus ',
+            '\\*': ' times ',
+            '\\/': ' divided by ',
+            '\\=': ' equals ',
+            '×': ' times ',
+            '÷': ' divided by ',
+            // Common mishearing fixes
+            'plus plus': 'plus',
+            'add add': 'add',
+            'what is': '',
+            "what's": '',
+            'calculate': '',
+            'compute': '',
+            'whats': '',
+            'the answer to': '',
+            'tell me': '',
+            'can you': '',
+            'please': '',
+            // Fix for numbers sometimes heard wrong
+            'to': 'two',  // Only in number context, handled later
+            'for': 'four', // Only in number context, handled later
+            'won': 'one',
+            'too': 'two',
+            'tree': 'three',
+            'free': 'three',
+            'ate': 'eight',
+            'sex': 'six',
+            'sax': 'six',
+            'nein': 'nine',
+            'knight': 'nine',
+            'night': 'nine',
+            'tin': 'ten',
+            'tan': 'ten', // but not tangent
+            'eleven': '11',
+            'twelve': '12',
+            'thirteen': '13',
+            'fourteen': '14',
+            'fifteen': '15',
+            'sixteen': '16',
+            'seventeen': '17',
+            'eighteen': '18',
+            'nineteen': '19',
+        };
+        
+        // Apply speech fixes
+        for (const [pattern, replacement] of Object.entries(speechFixes)) {
+            processedCommand = processedCommand.replace(new RegExp(pattern, 'gi'), replacement);
+        }
+        
+        // Step 3: Number words to digits mapping (comprehensive)
         const numberWords = {
             'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
             'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
-            'ten': '10', 'eleven': '11', 'twelve': '12', 'thirteen': '13',
-            'fourteen': '14', 'fifteen': '15', 'sixteen': '16', 'seventeen': '17',
-            'eighteen': '18', 'nineteen': '19', 'twenty': '20', 'thirty': '30',
-            'forty': '40', 'fifty': '50', 'sixty': '60', 'seventy': '70',
-            'eighty': '80', 'ninety': '90', 'hundred': '100', 'thousand': '1000',
-            'million': '1000000'
+            'ten': '10', 'twenty': '20', 'thirty': '30', 'forty': '40', 
+            'fifty': '50', 'sixty': '60', 'seventy': '70', 'eighty': '80', 
+            'ninety': '90', 'hundred': '100', 'thousand': '1000',
+            'million': '1000000', 'billion': '1000000000',
+            // Common compound numbers
+            'twenty one': '21', 'twenty two': '22', 'twenty three': '23',
+            'twenty four': '24', 'twenty five': '25', 'twenty six': '26',
+            'twenty seven': '27', 'twenty eight': '28', 'twenty nine': '29',
+            'thirty one': '31', 'thirty two': '32', 'thirty three': '33',
+            'forty five': '45', 'fifty five': '55', 'sixty six': '66',
+            'seventy seven': '77', 'eighty eight': '88', 'ninety nine': '99',
         };
         
-        // Replace number words with digits
-        let processedCommand = command;
-        for (const [word, digit] of Object.entries(numberWords)) {
+        // Replace compound numbers first (longer phrases)
+        const sortedNumberWords = Object.entries(numberWords).sort((a, b) => b[0].length - a[0].length);
+        for (const [word, digit] of sortedNumberWords) {
             processedCommand = processedCommand.replace(new RegExp(`\\b${word}\\b`, 'gi'), digit);
         }
         
-        // Scientific functions
-        const scientificPatterns = [
-            { pattern: /square root of (\d+\.?\d*)/i, fn: (m) => Math.sqrt(parseFloat(m[1])) },
-            { pattern: /sqrt (\d+\.?\d*)/i, fn: (m) => Math.sqrt(parseFloat(m[1])) },
-            { pattern: /cube root of (\d+\.?\d*)/i, fn: (m) => Math.cbrt(parseFloat(m[1])) },
-            { pattern: /(\d+\.?\d*) squared/i, fn: (m) => Math.pow(parseFloat(m[1]), 2) },
-            { pattern: /square of (\d+\.?\d*)/i, fn: (m) => Math.pow(parseFloat(m[1]), 2) },
-            { pattern: /(\d+\.?\d*) cubed/i, fn: (m) => Math.pow(parseFloat(m[1]), 3) },
-            { pattern: /cube of (\d+\.?\d*)/i, fn: (m) => Math.pow(parseFloat(m[1]), 3) },
-            { pattern: /(\d+\.?\d*) to the power of (\d+\.?\d*)/i, fn: (m) => Math.pow(parseFloat(m[1]), parseFloat(m[2])) },
-            { pattern: /(\d+\.?\d*) power (\d+\.?\d*)/i, fn: (m) => Math.pow(parseFloat(m[1]), parseFloat(m[2])) },
-            { pattern: /sine? of (\d+\.?\d*)/i, fn: (m) => Math.sin(parseFloat(m[1]) * Math.PI / 180) },
-            { pattern: /cosine? of (\d+\.?\d*)/i, fn: (m) => Math.cos(parseFloat(m[1]) * Math.PI / 180) },
-            { pattern: /tan(?:gent)? of (\d+\.?\d*)/i, fn: (m) => Math.tan(parseFloat(m[1]) * Math.PI / 180) },
-            { pattern: /log(?:arithm)? of (\d+\.?\d*)/i, fn: (m) => Math.log10(parseFloat(m[1])) },
-            { pattern: /natural log of (\d+\.?\d*)/i, fn: (m) => Math.log(parseFloat(m[1])) },
-            { pattern: /ln of (\d+\.?\d*)/i, fn: (m) => Math.log(parseFloat(m[1])) },
-            { pattern: /(\d+\.?\d*) factorial/i, fn: (m) => this.factorial(parseInt(m[1])) },
-            { pattern: /factorial of (\d+\.?\d*)/i, fn: (m) => this.factorial(parseInt(m[1])) },
-            { pattern: /absolute value of (-?\d+\.?\d*)/i, fn: (m) => Math.abs(parseFloat(m[1])) },
-            { pattern: /percentage of (\d+\.?\d*) of (\d+\.?\d*)/i, fn: (m) => (parseFloat(m[1]) / 100) * parseFloat(m[2]) },
-            { pattern: /(\d+\.?\d*) percent of (\d+\.?\d*)/i, fn: (m) => (parseFloat(m[1]) / 100) * parseFloat(m[2]) },
+        // Step 4: Handle "X hundred Y" patterns like "one hundred twenty three"
+        processedCommand = processedCommand.replace(/(\d+)\s*hundred\s*(?:and\s*)?(\d+)/gi, (match, h, n) => {
+            return String(parseInt(h) * 100 + parseInt(n));
+        });
+        processedCommand = processedCommand.replace(/(\d+)\s*hundred/gi, (match, h) => {
+            return String(parseInt(h) * 100);
+        });
+        processedCommand = processedCommand.replace(/(\d+)\s*thousand\s*(?:and\s*)?(\d+)/gi, (match, t, n) => {
+            return String(parseInt(t) * 1000 + parseInt(n));
+        });
+        processedCommand = processedCommand.replace(/(\d+)\s*thousand/gi, (match, t) => {
+            return String(parseInt(t) * 1000);
+        });
+        
+        // Step 5: Normalize operator words
+        const operatorNormalization = [
+            { patterns: ['plus', 'add', 'added to', 'and', 'with', 'sum'], op: ' plus ' },
+            { patterns: ['minus', 'subtract', 'subtracted', 'take away', 'less', 'negative'], op: ' minus ' },
+            { patterns: ['times', 'multiplied by', 'multiply by', 'multiply', 'x', 'into'], op: ' times ' },
+            { patterns: ['divided by', 'divide by', 'divide', 'over', 'by'], op: ' divided by ' },
         ];
         
-        for (const { pattern, fn } of scientificPatterns) {
+        for (const { patterns, op } of operatorNormalization) {
+            for (const pattern of patterns) {
+                // Avoid replacing "by" when it's part of "multiplied by" or "divided by"
+                if (pattern === 'by') {
+                    processedCommand = processedCommand.replace(/\s+by\s+(?!\d)/gi, op);
+                } else {
+                    processedCommand = processedCommand.replace(new RegExp(`\\s*${pattern}\\s*`, 'gi'), op);
+                }
+            }
+        }
+        
+        // Clean up multiple spaces
+        processedCommand = processedCommand.replace(/\s+/g, ' ').trim();
+        
+        console.log('Processed command:', processedCommand);
+        
+        // Step 6: Try to extract calculation patterns
+        
+        // Scientific functions first
+        const scientificPatterns = [
+            { pattern: /square\s*root\s*(?:of\s*)?(\d+\.?\d*)/i, fn: (m) => Math.sqrt(parseFloat(m[1])), name: 'sqrt' },
+            { pattern: /sqrt\s*(?:of\s*)?(\d+\.?\d*)/i, fn: (m) => Math.sqrt(parseFloat(m[1])), name: 'sqrt' },
+            { pattern: /cube\s*root\s*(?:of\s*)?(\d+\.?\d*)/i, fn: (m) => Math.cbrt(parseFloat(m[1])), name: 'cbrt' },
+            { pattern: /(\d+\.?\d*)\s*squared/i, fn: (m) => Math.pow(parseFloat(m[1]), 2), name: 'square' },
+            { pattern: /square\s*(?:of\s*)?(\d+\.?\d*)/i, fn: (m) => Math.pow(parseFloat(m[1]), 2), name: 'square' },
+            { pattern: /(\d+\.?\d*)\s*cubed/i, fn: (m) => Math.pow(parseFloat(m[1]), 3), name: 'cube' },
+            { pattern: /cube\s*(?:of\s*)?(\d+\.?\d*)/i, fn: (m) => Math.pow(parseFloat(m[1]), 3), name: 'cube' },
+            { pattern: /(\d+\.?\d*)\s*(?:to the power of|power|raised to|exponent)\s*(\d+\.?\d*)/i, fn: (m) => Math.pow(parseFloat(m[1]), parseFloat(m[2])), name: 'power' },
+            { pattern: /(\d+\.?\d*)\s*\^\s*(\d+\.?\d*)/i, fn: (m) => Math.pow(parseFloat(m[1]), parseFloat(m[2])), name: 'power' },
+            { pattern: /sine?\s*(?:of\s*)?(\d+\.?\d*)\s*(?:degrees?)?/i, fn: (m) => Math.sin(parseFloat(m[1]) * Math.PI / 180), name: 'sin' },
+            { pattern: /cosine?\s*(?:of\s*)?(\d+\.?\d*)\s*(?:degrees?)?/i, fn: (m) => Math.cos(parseFloat(m[1]) * Math.PI / 180), name: 'cos' },
+            { pattern: /tan(?:gent)?\s*(?:of\s*)?(\d+\.?\d*)\s*(?:degrees?)?/i, fn: (m) => Math.tan(parseFloat(m[1]) * Math.PI / 180), name: 'tan' },
+            { pattern: /log(?:arithm)?\s*(?:of\s*)?(\d+\.?\d*)/i, fn: (m) => Math.log10(parseFloat(m[1])), name: 'log' },
+            { pattern: /natural\s*log\s*(?:of\s*)?(\d+\.?\d*)/i, fn: (m) => Math.log(parseFloat(m[1])), name: 'ln' },
+            { pattern: /ln\s*(?:of\s*)?(\d+\.?\d*)/i, fn: (m) => Math.log(parseFloat(m[1])), name: 'ln' },
+            { pattern: /(\d+\.?\d*)\s*factorial/i, fn: (m) => this.factorial(parseInt(m[1])), name: 'factorial' },
+            { pattern: /factorial\s*(?:of\s*)?(\d+\.?\d*)/i, fn: (m) => this.factorial(parseInt(m[1])), name: 'factorial' },
+            { pattern: /absolute\s*(?:value\s*)?(?:of\s*)?(-?\d+\.?\d*)/i, fn: (m) => Math.abs(parseFloat(m[1])), name: 'abs' },
+            { pattern: /(\d+\.?\d*)\s*percent\s*(?:of\s*)?(\d+\.?\d*)/i, fn: (m) => (parseFloat(m[1]) / 100) * parseFloat(m[2]), name: 'percent' },
+            { pattern: /percentage\s*(?:of\s*)?(\d+\.?\d*)\s*(?:of\s*)?(\d+\.?\d*)/i, fn: (m) => (parseFloat(m[1]) / 100) * parseFloat(m[2]), name: 'percent' },
+        ];
+        
+        for (const { pattern, fn, name } of scientificPatterns) {
             const match = processedCommand.match(pattern);
             if (match) {
                 try {
                     const result = fn(match);
-                    this.setResult(result);
-                    this.addToHistory(`${command}`, result);
-                    return result;
+                    if (!isNaN(result) && isFinite(result)) {
+                        this.setResult(result);
+                        this.addToHistory(`${name}(${match[1]})`, result);
+                        return result;
+                    }
                 } catch (e) {
                     console.error('Scientific calculation error:', e);
                 }
             }
         }
         
-        // Basic arithmetic patterns
+        // Basic arithmetic - multiple pattern approaches
+        // Pattern 1: "X plus Y", "X times Y", etc.
         const arithmeticPatterns = [
-            { pattern: /(\d+\.?\d*)\s*(?:plus|\+|add(?:ed)?(?:\s+to)?)\s*(\d+\.?\d*)/i, op: '+' },
-            { pattern: /add\s+(\d+\.?\d*)\s+(?:and|to)\s+(\d+\.?\d*)/i, op: '+' },
-            { pattern: /(\d+\.?\d*)\s*(?:minus|-|subtract(?:ed)?(?:\s+from)?)\s*(\d+\.?\d*)/i, op: '-' },
-            { pattern: /subtract\s+(\d+\.?\d*)\s+from\s+(\d+\.?\d*)/i, op: '-', reverse: true },
-            { pattern: /(\d+\.?\d*)\s*(?:times|×|x|multiplied by|multiply(?:\s+by)?)\s*(\d+\.?\d*)/i, op: '*' },
-            { pattern: /multiply\s+(\d+\.?\d*)\s+(?:by|and)\s+(\d+\.?\d*)/i, op: '*' },
-            { pattern: /(\d+\.?\d*)\s*(?:divided by|÷|\/|over)\s*(\d+\.?\d*)/i, op: '/' },
-            { pattern: /divide\s+(\d+\.?\d*)\s+by\s+(\d+\.?\d*)/i, op: '/' },
-            { pattern: /(\d+\.?\d*)\s*(?:mod(?:ulo)?|%)\s*(\d+\.?\d*)/i, op: '%' },
+            // Addition patterns
+            { pattern: /(\d+\.?\d*)\s*plus\s*(\d+\.?\d*)/i, op: '+' },
+            { pattern: /(\d+\.?\d*)\s*\+\s*(\d+\.?\d*)/i, op: '+' },
+            // Subtraction patterns  
+            { pattern: /(\d+\.?\d*)\s*minus\s*(\d+\.?\d*)/i, op: '-' },
+            { pattern: /(\d+\.?\d*)\s*\-\s*(\d+\.?\d*)/i, op: '-' },
+            // Multiplication patterns
+            { pattern: /(\d+\.?\d*)\s*times\s*(\d+\.?\d*)/i, op: '*' },
+            { pattern: /(\d+\.?\d*)\s*\*\s*(\d+\.?\d*)/i, op: '*' },
+            { pattern: /(\d+\.?\d*)\s*x\s*(\d+\.?\d*)/i, op: '*' },
+            // Division patterns
+            { pattern: /(\d+\.?\d*)\s*divided by\s*(\d+\.?\d*)/i, op: '/' },
+            { pattern: /(\d+\.?\d*)\s*\/\s*(\d+\.?\d*)/i, op: '/' },
+            { pattern: /(\d+\.?\d*)\s*over\s*(\d+\.?\d*)/i, op: '/' },
+            // Modulo
+            { pattern: /(\d+\.?\d*)\s*mod(?:ulo)?\s*(\d+\.?\d*)/i, op: '%' },
         ];
         
-        for (const { pattern, op, reverse } of arithmeticPatterns) {
+        for (const { pattern, op } of arithmeticPatterns) {
             const match = processedCommand.match(pattern);
             if (match) {
-                let num1 = parseFloat(match[1]);
-                let num2 = parseFloat(match[2]);
+                const num1 = parseFloat(match[1]);
+                const num2 = parseFloat(match[2]);
                 
-                if (reverse) {
-                    [num1, num2] = [num2, num1];
+                if (!isNaN(num1) && !isNaN(num2)) {
+                    let result;
+                    switch (op) {
+                        case '+': result = num1 + num2; break;
+                        case '-': result = num1 - num2; break;
+                        case '*': result = num1 * num2; break;
+                        case '/': result = num2 !== 0 ? num1 / num2 : 'Error'; break;
+                        case '%': result = num1 % num2; break;
+                    }
+                    
+                    const expr = `${num1} ${op} ${num2}`;
+                    this.expression = expr;
+                    this.expressionDisplay.textContent = expr;
+                    this.setResult(result);
+                    this.addToHistory(expr, result);
+                    return result;
                 }
-                
-                let result;
-                switch (op) {
-                    case '+': result = num1 + num2; break;
-                    case '-': result = num1 - num2; break;
-                    case '*': result = num1 * num2; break;
-                    case '/': result = num2 !== 0 ? num1 / num2 : 'Error'; break;
-                    case '%': result = num1 % num2; break;
-                }
-                
-                const expr = `${num1} ${op} ${num2}`;
-                this.expression = expr;
-                this.expressionDisplay.textContent = expr;
-                this.setResult(result);
-                this.addToHistory(expr, result);
-                return result;
             }
         }
         
-        // Try to extract just a number
-        const numberMatch = processedCommand.match(/(\d+\.?\d*)/);
+        // Try chain operations: "5 plus 3 minus 2"
+        const chainMatch = processedCommand.match(/(\d+\.?\d*)(?:\s*(?:plus|minus|times|divided by)\s*\d+\.?\d*)+/i);
+        if (chainMatch) {
+            try {
+                let expr = chainMatch[0];
+                // Convert words to operators
+                expr = expr.replace(/\s*plus\s*/gi, '+');
+                expr = expr.replace(/\s*minus\s*/gi, '-');
+                expr = expr.replace(/\s*times\s*/gi, '*');
+                expr = expr.replace(/\s*divided by\s*/gi, '/');
+                
+                // Safely evaluate
+                const result = this.safeEval(expr);
+                if (result !== null && !isNaN(result)) {
+                    this.expression = expr;
+                    this.expressionDisplay.textContent = expr;
+                    this.setResult(result);
+                    this.addToHistory(expr, result);
+                    return result;
+                }
+            } catch (e) {
+                console.error('Chain calculation error:', e);
+            }
+        }
+        
+        // Try to extract just a number to input
+        const numberMatch = processedCommand.match(/^\s*(\d+\.?\d*)\s*$/);
         if (numberMatch) {
-            const num = parseFloat(numberMatch[1]);
             this.appendNumber(numberMatch[1]);
+            this.showToast(`Entered: ${numberMatch[1]}`, 'info');
             return null;
         }
         
-        this.showToast('Could not understand command. Try again.', 'info');
+        // Last resort: try to find any two numbers
+        const allNumbers = processedCommand.match(/\d+\.?\d*/g);
+        if (allNumbers && allNumbers.length >= 2) {
+            // Check for operator keyword
+            let op = '+';
+            if (processedCommand.includes('minus') || processedCommand.includes('subtract')) op = '-';
+            else if (processedCommand.includes('times') || processedCommand.includes('multipl')) op = '*';
+            else if (processedCommand.includes('divid') || processedCommand.includes('over')) op = '/';
+            
+            const num1 = parseFloat(allNumbers[0]);
+            const num2 = parseFloat(allNumbers[1]);
+            
+            let result;
+            switch (op) {
+                case '+': result = num1 + num2; break;
+                case '-': result = num1 - num2; break;
+                case '*': result = num1 * num2; break;
+                case '/': result = num2 !== 0 ? num1 / num2 : 'Error'; break;
+            }
+            
+            const expr = `${num1} ${op} ${num2}`;
+            this.expression = expr;
+            this.expressionDisplay.textContent = expr;
+            this.setResult(result);
+            this.addToHistory(expr, result);
+            return result;
+        }
+        
+        this.showToast('Could not understand. Try: "5 plus 3" or "square root of 16"', 'info');
         return null;
+    }
+    
+    // Safe evaluation for expressions
+    safeEval(expr) {
+        try {
+            // Only allow numbers and basic operators
+            if (!/^[\d\s\+\-\*\/\.\(\)]+$/.test(expr)) {
+                return null;
+            }
+            // Use Function constructor for safer eval
+            return new Function('return ' + expr)();
+        } catch (e) {
+            return null;
+        }
     }
     
     // Text-to-Speech
@@ -1611,6 +1813,34 @@ class VoiceCalculator {
     // Help Panel
     toggleHelp() {
         this.voiceHelp.classList.toggle('show');
+    }
+    
+    showVoiceHelp() {
+        // Show help with voice command examples
+        const helpExamples = [
+            '📢 Voice Command Examples:',
+            '',
+            '🔢 Basic Math:',
+            '• "five plus three"',
+            '• "10 minus 4"',
+            '• "6 times 7"',
+            '• "20 divided by 5"',
+            '',
+            '🔬 Scientific:',
+            '• "square root of 16"',
+            '• "5 squared"',
+            '• "sine of 45"',
+            '• "10 percent of 50"',
+            '',
+            '⚙️ Commands:',
+            '• "clear" - reset calculator',
+            '• "history" - show history',
+            '• "scientific mode"',
+            '• "help" - show this'
+        ];
+        
+        this.showToast(helpExamples.slice(0, 5).join('\n'), 'info', 5000);
+        this.voiceHelp.classList.add('show');
     }
     
     // Keyboard Support

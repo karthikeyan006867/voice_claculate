@@ -269,6 +269,14 @@ body {
     font-size: 0.9rem;
 }
 
+.voice-hint {
+    margin-top: 5px;
+    color: var(--accent-color);
+    font-size: 0.75rem;
+    font-style: italic;
+    opacity: 0.8;
+}
+
 /* Mode Selector */
 .mode-selector {
     display: flex;
